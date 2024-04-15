@@ -107,6 +107,22 @@ MODEL_CONFIGS = [
         # Note that even then it will take up ~60GB per GPU on an 8-GPU machine.
         default_optimizer="adafactor",
     ),
+    ModelConfig(
+        name="mistralai/Mistral-7B-v0.1",
+        default_lr=1e-5,
+        eval_batch_size=2,
+        gradient_checkpointing=True,
+        model_parallel=True,
+        # note: you will probably not be able to run this without many gpus
+    ),
+    ModelConfig(
+        name="google/gemma-7b",
+        default_lr=1e-5,
+        eval_batch_size=2,
+        gradient_checkpointing=True,
+        model_parallel=True,
+        # note: you will probably not be able to run this without many gpus
+    ),
 ]
 MODELS_DICT: Dict[str, ModelConfig] = {
     model_config.name: model_config for model_config in MODEL_CONFIGS
@@ -156,7 +172,7 @@ def main(
     seed: int = 0,
     minibatch_size_per_device: Optional[float] = None,
     train_with_dropout: bool = False,
-    results_folder: str = "/tmp/results",
+    results_folder: str = "./results",
     linear_probe: bool = False,
     lr_schedule: str = "cosine_anneal",
     # Note: you can pass either weak_model_size or weak_labels_path. If you pass
@@ -178,6 +194,7 @@ def main(
     assert (
         weak_model_size is None or weak_labels_path is None
     ), "Can't pass both weak_model_size and weak_labels_path"
+    print(MODELS_DICT)
     model_config = MODELS_DICT[model_size]
 
     use_default_lr = False
