@@ -1,0 +1,37 @@
+Given a sentence, classify the sentiment it conveys. The valid labels are: sadness, joy, love, anger, fear, surprise. Only output a valid label and nothing else. Below are a few examples:
+
+Input:
+i feel as if i am the beloved preparing herself for the wedding
+Answer:
+joy
+
+Input:
+i was trying really hard to be a people pleaser and itd left me feeling so defeated
+Answer:
+sadness
+
+Input:
+i feel so damn disgusted violated and hurt and angry and everything
+Answer:
+anger
+
+Input:
+i look at my calendar i feel overwhelmed by all of the appointments and obligations coming up
+Answer:
+fear
+
+Input:
+i like good jokes i like to have a good company and i like a man that can make a woman feel special
+Answer:
+love
+
+Input:
+im still feeling a little shocked over yesterdays news that pope benedict xvi has decided to resign
+Answer:
+surprise
+
+<input>
+{input}
+</input>
+
+Answer:

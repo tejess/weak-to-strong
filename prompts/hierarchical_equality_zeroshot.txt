@@ -1,0 +1,31 @@
+You are asked to check for equality between two tuples of numbers. There are two ways for (a,b) = (c,d).
+
+1. (a = c) AND (b = d)
+2. (a != c) AND (b != d)
+
+Given an input of the form "(a,b) (c,d)", please say "Yes" if (a,b) = (c,d), and "No" if (a,b) != (c,d). Do it step-by-step: first check if a = c and b = d. Then check if the results belong to any of the above cases. Then give your answer. Below are a few examples:
+
+Input:
+(2,3) (2,3)
+Output:
+2 = 2 and 3 = 3. This falls under case 1. The answer is Yes.
+
+Input:
+(2,3) (2,7)
+Output:
+2 = 2 and 3 != 7. This falls under neither cases. The answer is No.
+
+Input:
+(2,3) (9,7)
+Output:
+2 != 9 and 3 != 7. This falls under case 2. The answer is Yes.
+
+Input:
+(2,3) (9,3)
+Output:
+(2 != 9) and (3 = 3). This falls under neither cases. The answer is No.
+
+Input:
+{INPUT}
+
+Output:

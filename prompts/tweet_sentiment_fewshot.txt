@@ -1,0 +1,37 @@
+Given a tweet, classify the sentiment it conveys. The possible labels are: positive, neutral, and negative. Only output a label and nothing else. Below are a few examples:
+
+Input:
+who watched X-men origins: wolverine? i totally loved it! haha
+Answer:
+positive
+
+Input:
+What's sad is that I actually had to google that term. That sucks, tho.
+Answer:
+negative
+
+Input:
+Hey, you change your twitter account, and you didn`t even tell me...
+Answer:
+neutral
+
+Input:
+sounds like you all had a great night . i`m glad it was successful
+Answer:
+positive
+
+Input:
+Sons of ****, why couldn't they put them on the releases we already bought
+Answer:
+negative
+
+Input:
+Saw James carville in the store today. His head is really that bald
+Answer:
+neutral
+
+<input>
+{input}
+</input>
+
+Answer:

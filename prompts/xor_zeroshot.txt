@@ -1,0 +1,5 @@
+Compute the XOR (exclusive-or) between two binary values.
+
+Input:
+0 1
+Output:

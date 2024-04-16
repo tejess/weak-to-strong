@@ -1,0 +1,7 @@
+Given a tweet, classify the sentiment it conveys. The possible labels are: positive, neutral, and negative. Only output a label and nothing else.
+
+<input>
+{input}
+</input>
+
+Answer:
