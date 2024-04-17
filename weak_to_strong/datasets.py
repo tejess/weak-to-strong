@@ -84,6 +84,22 @@ def hf_loader(*hf_name, split_names=None):
 # ACTUAL DATASETS
 ##########
 
+def format_equivalence_relation(ex, rng):
+    return dict(txt=f"{ex['input']}", hard_label=ex['label'])
+
+register_dataset(
+    "equivalence_relation",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/equivalence_relation"), formatter=format_equivalence_relation),
+)
+
+
+def format_hierarchical_equivalence(ex, rng):
+    return dict(txt=f"{ex['input']}", hard_label=ex['label'])
+
+register_dataset(
+    "hierarchical_equivalence",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence"), formatter=format_hierarchical_equivalence),
+)
 
 def format_amazon_polarity(ex, rng):
     return dict(txt=f"{ex['title']} {ex['content']}", hard_label=ex["label"])
@@ -93,7 +109,6 @@ register_dataset(
     "amazon_polarity",
     DatasetConfig(loader=hf_loader("amazon_polarity"), formatter=format_amazon_polarity),
 )
-
 
 def format_sciq(ex, rng):
     hard_label = int(rng.random() < 0.5)
