@@ -279,18 +279,11 @@ def train_and_save_model(
         logger.logkv("inference_accuracy", np.mean([r["acc"] for r in inference_results]))
 
     if save_path:
-        with open(os.path.join(save_path, "results.pkl"), "wb") as f:
-            pickle.dump(
-                {
-                    "avg_acc_test": float(np.mean([r["acc"] for r in test_results])),
-                    "avg_acc_inference": float(
-                        np.mean([r["acc"] for r in inference_results] if inference_results else [])
-                    ),
-                    "test_results": test_results,
-                    "inference_results": inference_results if inference_results else [],
-                },
-                f,
-            )
+        with open(os.path.join(save_path, "results.txt"), "w") as f:
+            f.write("avg_acc_test: {}\n".format(float(np.mean([r["acc"] for r in test_results]))))
+            f.write("avg_acc_inference: {}\n".format(float(np.mean([r["acc"] for r in inference_results] if inference_results else []))))
+            f.write("test_results: {}\n".format(test_results))
+            f.write("inference_results: {}\n".format(inference_results if inference_results else []))
     # try to clean up memory
     clear_mem()
     logger.shutdown()
