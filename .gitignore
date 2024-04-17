@@ -2,3 +2,6 @@ dump
 *.pyc
 *.swp
 *.swo
+
+.ipynb_checkpoints/
+.gitignore
