@@ -20,7 +20,7 @@ from weak_to_strong.train import ModelConfig, train_and_save_model
 MODEL_CONFIGS = [
     ModelConfig(
         name="gpt2",
-        default_lr=5e-5,
+        default_lr=1e-5,
         eval_batch_size=32,
     ),
     ModelConfig(
@@ -154,7 +154,15 @@ def get_config_foldername(config: dict) -> str:
         else:
             return str(value)
 
-    return "-".join(f"{shorten_key(k)}={shorten_value(v)}" for k, v in sorted(config.items()))
+    name_params = []
+    relevant_configs = ['ds_name', 'lr', 'model_size', \
+                        'weak_model_size', 'epochs', 'batch_size']
+    for k, v in sorted(config.items()):
+        if k in relevant_configs:
+            name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
+    return "-".join(name_params)
+
+    # return "-".join(f"{shorten_key(k)}={shorten_value(v)}" for k, v in sorted(config.items()))
 
 
 def main(
@@ -167,7 +175,7 @@ def main(
     model_size: str = "gpt2",
     lr: Optional[float] = None,
     optim: Optional[str] = None,
-    epochs: int = 2,
+    epochs: int = 3,
     force_retrain: bool = False,
     seed: int = 0,
     minibatch_size_per_device: Optional[float] = None,

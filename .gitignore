@@ -4,4 +4,5 @@ dump
 *.swo
 
 .ipynb_checkpoints/
-.gitignore
+results/
+run_sweep.sh
