@@ -101,6 +101,15 @@ register_dataset(
     DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence"), formatter=format_hierarchical_equivalence),
 )
 
+# sentiment dataset
+def format_emotions(ex, rng):
+    return dict(txt=f"{ex['text']}", hard_label=ex['label'])
+
+register_dataset(
+    "emotion_guessing",
+    DatasetConfig(loader=hf_loader("dair-ai/emotion"), formatter=format_emotions),
+)
+
 def format_amazon_polarity(ex, rng):
     return dict(txt=f"{ex['title']} {ex['content']}", hard_label=ex["label"])
 
