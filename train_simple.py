@@ -25,7 +25,7 @@ MODEL_CONFIGS = [
     ),
     ModelConfig(
         name="gpt2-medium",
-        default_lr=5e-5,
+        default_lr=1e-5,
         eval_batch_size=32,
     ),
     ModelConfig(
@@ -155,8 +155,10 @@ def get_config_foldername(config: dict) -> str:
             return str(value)
 
     name_params = []
+    # relevant_configs = ['ds_name', 'lr', 'model_size', \
+    #                     'weak_model_size', 'epochs', 'batch_size']
     relevant_configs = ['ds_name', 'lr', 'model_size', \
-                        'weak_model_size', 'epochs', 'batch_size']
+                        'weak_model_size', 'epochs']
     for k, v in sorted(config.items()):
         if k in relevant_configs:
             name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
