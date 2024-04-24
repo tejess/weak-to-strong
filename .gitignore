@@ -3,6 +3,7 @@ dump
 *.swp
 *.swo
 
+WTS/
 .ipynb_checkpoints/
 results/
 run_sweep.sh
