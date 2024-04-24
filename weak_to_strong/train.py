@@ -215,7 +215,6 @@ def train_and_save_model(
     #     return False
 
     def maybe_load_model(model):
-        print("Save path: {}".format(save_path))
         if os.path.exists(os.path.join(save_path, "results.txt")) and not force_retrain:
             print("loading from", save_path)
             checkpoint_path = os.path.join(save_path, "model.safetensors")
