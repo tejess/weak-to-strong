@@ -155,10 +155,8 @@ def get_config_foldername(config: dict) -> str:
             return str(value)
 
     name_params = []
-    # relevant_configs = ['ds_name', 'lr', 'model_size', \
-    #                     'weak_model_size', 'epochs', 'batch_size']
-    relevant_configs = ['ds_name', 'lr', 'model_size', \
-                        'weak_model_size', 'epochs']
+    relevant_configs = ['ds_name', 'lr', 'model_ckpt', \
+                        'weak_model_size', 'epochs', 'batch_size']
     for k, v in sorted(config.items()):
         if k in relevant_configs:
             name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
@@ -175,6 +173,7 @@ def main(
     n_docs: int = 20000,
     n_test_docs: int = 10000,
     model_size: str = "gpt2",
+    model_ckpt: Optional[str] = None,
     lr: Optional[float] = None,
     optim: Optional[str] = None,
     epochs: int = 3,
@@ -196,6 +195,7 @@ def main(
     # still do final evals (which requires eval_every to be set to a non-zero, non-None value)
     eval_every: int = 1000000,
     sync_command: Optional[str] = None,
+    strong_ckpt_path: Optional[str] = None,
 ):
     # this is per device!
     if minibatch_size_per_device is None:
@@ -218,6 +218,9 @@ def main(
     if optim is None:
         optim = model_config.default_optimizer
 
+    if model_ckpt is None:
+        model_ckpt = model_name
+
     # The commented out terms are the ones that should not change final results
     config = {
         "batch_size": batch_size,
@@ -226,7 +229,7 @@ def main(
         "loss": loss,
         "n_docs": n_docs,
         "n_test_docs": n_test_docs,
-        "model_size": model_size,
+        "model_ckpt": model_ckpt,
         "lr": lr,
         "optim": optim,
         "epochs": epochs,
@@ -239,6 +242,7 @@ def main(
         "lr_schedule": lr_schedule,
         "eval_every": eval_every,
         # "sweep_subfolder": sweep_subfolder,
+        "strong_ckpt": strong_ckpt_path,
     }
 
     if weak_model_size is not None:
@@ -281,7 +285,8 @@ def main(
             if result.returncode != 0:
                 raise RuntimeError(f"Sync command failed with return code {result.returncode}")
         train1_ds = load_from_disk(weak_labels_path)
-        train2_ds = None
+        # train2_ds = None
+        train2_ds = test_ds
 
         weak_model_config = json.load(open(weak_labels_path.replace("weak_labels", "config.json")))
         config["weak_model_size"] = weak_model_config["model_size"]
@@ -322,6 +327,7 @@ def main(
         lr_schedule=lr_schedule,
         optimizer_name=optim,
         eval_every=eval_every,
+        strong_ckpt_path=strong_ckpt_path,
     )
 
     if weak_ds is not None:
