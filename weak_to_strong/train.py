@@ -190,24 +190,20 @@ def train_and_save_model(
 
     if minibatch_size_per_device is None:
         minibatch_size_per_device = 1
-
+    print(loss_fn)
     gradient_checkpointing = model_config.gradient_checkpointing
     custom_kwargs = model_config.custom_kwargs or {}
-
+    from safetensors.torch import load_model
     def maybe_load_model(model):
+        print("Save path: {}".format(save_path))
         if os.path.exists(os.path.join(save_path, "results.txt")) and not force_retrain:
             print("loading from", save_path)
-            checkpoint_path = os.path.join(save_path, "pytorch_model.bin")
+            checkpoint_path = os.path.join(save_path, "model.safetensors")
             if not os.path.exists(checkpoint_path):
                 # Assume this means we have a sharded checkpoint, and load it appropriately
                 load_sharded_checkpoint(model, checkpoint_path)
             else:
-                state_dict = torch.load(os.path.join(save_path, "pytorch_model.bin"))
-                state_dict = {
-                    k.replace("transformer.module", "transformer"): v
-                    for (k, v) in state_dict.items()
-                }
-                custom_kwargs["state_dict"] = state_dict
+                load_model(model, checkpoint_path)
             return True
         return False
 
