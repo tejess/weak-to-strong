@@ -296,10 +296,9 @@ def train_and_save_model(
         print("Model training took", time.time() - start, "seconds")
         if save_path:
             # Note: If the model is wrapped by DataParallel, we need to unwrap it before saving
-            (model if hasattr(model, "save_pretrained") else model.module).save_pretrained(
-                save_path
-            )
-            print("saved", save_path)
+            model_to_save = model.module if hasattr(model, "module") else model
+            model_to_save.save_pretrained(save_path)
+            print("Model saved successfully at", save_path)
 
     inference_results = None
     if inference_ds:
