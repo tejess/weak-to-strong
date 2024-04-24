@@ -2,6 +2,7 @@ dump
 *.pyc
 *.swp
 *.swo
-
+results
 .ipynb_checkpoints/
 .gitignore
+slurm-*
