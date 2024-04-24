@@ -267,6 +267,7 @@ def main(
         train1_ds, train2_ds = split_data["train"], split_data["test"]
         print("len(train1):", len(train1_ds), "len(train2):", len(train2_ds))
         config_name = get_config_foldername(config)
+        print(config_name)
     else:
         if not weak_labels_path.endswith("weak_labels"):
             weak_labels_path = weak_labels_path + "/weak_labels"
