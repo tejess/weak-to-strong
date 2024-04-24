@@ -219,7 +219,7 @@ def main(
         optim = model_config.default_optimizer
 
     if model_ckpt is None:
-        model_ckpt = model_name
+        model_ckpt = model_size
 
     # The commented out terms are the ones that should not change final results
     config = {
