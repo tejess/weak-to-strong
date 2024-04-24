@@ -156,7 +156,7 @@ def get_config_foldername(config: dict) -> str:
 
     name_params = []
     relevant_configs = ['ds_name', 'lr', 'model_ckpt', \
-                        'weak_model_size', 'epochs', 'batch_size']
+                        'weak_model_size', 'epochs', 'batch_size', 'loss']
     for k, v in sorted(config.items()):
         if k in relevant_configs:
             name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
@@ -219,7 +219,7 @@ def main(
         optim = model_config.default_optimizer
 
     if model_ckpt is None:
-        model_ckpt = model_name
+        model_ckpt = model_size
 
     # The commented out terms are the ones that should not change final results
     config = {
@@ -302,6 +302,7 @@ def main(
     )
     # Tokenize datasets
     tokenizer = get_tokenizer(model_config.name)
+    print("Max context: {}".format(max_ctx))
     train1_ds = tokenize_dataset(train1_ds, tokenizer, max_ctx)
     test_ds = tokenize_dataset(test_ds, tokenizer, max_ctx)
     if train2_ds:
