@@ -1,8 +1,0 @@
-dump
-*.pyc
-*.swp
-*.swo
-
-.ipynb_checkpoints/
-results/
-run_sweep.sh
