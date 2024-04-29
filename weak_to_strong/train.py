@@ -196,37 +196,37 @@ def train_and_save_model(
     gradient_checkpointing = model_config.gradient_checkpointing
     custom_kwargs = model_config.custom_kwargs or {}
 
-    # def maybe_load_model(model):
-    #     print("Save path: {}".format(save_path))
-    #     if os.path.exists(os.path.join(save_path, "results.txt")) and not force_retrain:
-    #         print("loading from", save_path)
-    #         checkpoint_path = os.path.join(save_path, "pytorch_model.bin")
-    #         if not os.path.exists(checkpoint_path):
-    #             # Assume this means we have a sharded checkpoint, and load it appropriately
-    #             load_sharded_checkpoint(model, checkpoint_path)
-    #         else:
-    #             state_dict = torch.load(os.path.join(save_path, "pytorch_model.bin"))
-    #             state_dict = {
-    #                 k.replace("transformer.module", "transformer"): v
-    #                 for (k, v) in state_dict.items()
-    #             }
-    #             custom_kwargs["state_dict"] = state_dict
-    #         return True
-    #     return False
-
     def maybe_load_model(model):
+        print("Save path: {}".format(save_path))
         if os.path.exists(os.path.join(save_path, "results.txt")) and not force_retrain:
             print("loading from", save_path)
-            checkpoint_path = os.path.join(save_path, "model.safetensors")
+            checkpoint_path = os.path.join(save_path, "pytorch_model.bin")
             if not os.path.exists(checkpoint_path):
                 # Assume this means we have a sharded checkpoint, and load it appropriately
-                print("trying load shards")
                 load_sharded_checkpoint(model, checkpoint_path)
             else:
-                print("trying to load model: {}".format(checkpoint_path))
-                load_model(model, checkpoint_path)
+                state_dict = torch.load(os.path.join(save_path, "pytorch_model.bin"))
+                state_dict = {
+                    k.replace("transformer.module", "transformer"): v
+                    for (k, v) in state_dict.items()
+                }
+                custom_kwargs["state_dict"] = state_dict
             return True
         return False
+
+    # def maybe_load_model(model):
+    #     if os.path.exists(os.path.join(save_path, "results.txt")) and not force_retrain:
+    #         print("loading from", save_path)
+    #         checkpoint_path = os.path.join(save_path, "model.safetensors")
+    #         if not os.path.exists(checkpoint_path):
+    #             # Assume this means we have a sharded checkpoint, and load it appropriately
+    #             print("trying load shards")
+    #             load_sharded_checkpoint(model, checkpoint_path)
+    #         else:
+    #             print("trying to load model: {}".format(checkpoint_path))
+    #             load_model(model, checkpoint_path)
+    #         return True
+    #     return False
 
     already_trained = False
     # Load the model
@@ -315,10 +315,11 @@ def train_and_save_model(
                 print("wrapped by dataparallel so unwrapping")
                 model_to_save = model.module
             else:
+                print("not wrapped by dataparallel")
                 model_to_save = model
             
            
-            model_to_save.save_pretrained(save_path, safe_serialization=True)
+            model_to_save.save_pretrained(save_path, safe_serialization=False)
             print("Model saved successfully at", save_path)
 
     inference_results = None
