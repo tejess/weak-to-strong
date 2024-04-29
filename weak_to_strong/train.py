@@ -310,7 +310,7 @@ def train_and_save_model(
             print(save_path)
             # Note: If the model is wrapped by DataParallel, we need to unwrap it before saving
             model_to_save = model.module if hasattr(model, "module") else model
-            model_to_save.save_pretrained(save_path)
+            model_to_save.save_pretrained(save_path, safe_serialization=False)
             print("Model saved successfully at", save_path)
 
     inference_results = None
