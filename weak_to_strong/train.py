@@ -269,7 +269,8 @@ def train_and_save_model(
         # data parallel:  currently not supported with model parallel
 
         minibatch_size = min(minibatch_size_per_device * torch.cuda.device_count(), batch_size)
-
+        print("number of gpus: ")
+        print(torch.cuda.device_count())
         if torch.cuda.device_count() > 1:
             model = torch.nn.DataParallel(model, output_device=0)
             print(
@@ -279,6 +280,7 @@ def train_and_save_model(
                 minibatch_size,
             )
         else:
+            print("Using one gpu")
             minibatch_size = minibatch_size_per_device
 
     print("Already trained: {}".format(already_trained))
@@ -309,8 +311,14 @@ def train_and_save_model(
             print("trying to save model at: ")
             print(save_path)
             # Note: If the model is wrapped by DataParallel, we need to unwrap it before saving
-            model_to_save = model.module if hasattr(model, "module") else model
-            model_to_save.save_pretrained(save_path, safe_serialization=False)
+            if hasattr(model, "module"):
+                print("wrapped by dataparallel so unwrapping")
+                model_to_save = model.module
+            else:
+                model_to_save = model
+            
+           
+            model_to_save.save_pretrained(save_path, safe_serialization=True)
             print("Model saved successfully at", save_path)
 
     inference_results = None
