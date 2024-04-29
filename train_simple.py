@@ -310,6 +310,7 @@ def main(
 
     loss_fn = loss_dict[loss]
     print(f"Training model model, size {model_size}")
+    print(save_path)
     test_results, weak_ds = train_and_save_model(
         model_config,
         train1_ds,

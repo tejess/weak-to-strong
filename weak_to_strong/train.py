@@ -220,8 +220,10 @@ def train_and_save_model(
             checkpoint_path = os.path.join(save_path, "model.safetensors")
             if not os.path.exists(checkpoint_path):
                 # Assume this means we have a sharded checkpoint, and load it appropriately
+                print("trying load shards")
                 load_sharded_checkpoint(model, checkpoint_path)
             else:
+                print("trying to load model: {}".format(checkpoint_path))
                 load_model(model, checkpoint_path)
             return True
         return False
@@ -229,6 +231,7 @@ def train_and_save_model(
     already_trained = False
     # Load the model
     if model_config.model_parallel:
+        print("model_parallel is true")
         assert torch.cuda.device_count() > 1, f"you might want more gpus for {model_config.name}"
         model = TransformerWithHead.from_pretrained(
             model_config.name,
@@ -238,6 +241,9 @@ def train_and_save_model(
             **custom_kwargs,
         )
         if strong_ckpt_path:
+            print("strong checkpoint path: ")
+            print(strong_ckpt_path)
+            print("trying to load model")
             load_model(model, strong_ckpt_path)
             print("Checkpoint loaded successfully!")
 
@@ -245,6 +251,7 @@ def train_and_save_model(
         # slight misnomer, more like minibatch_size_per_dp_replica
         minibatch_size = minibatch_size_per_device
     else:
+        print("model_paraller is false")
         model = TransformerWithHead.from_pretrained(
             model_config.name, 
             num_labels=2, 
@@ -252,6 +259,9 @@ def train_and_save_model(
             **custom_kwargs
         ).to("cuda")
         if strong_ckpt_path:
+            print("strong checkpoint path: ")
+            print(strong_ckpt_path)
+            print("trying to load model")
             load_model(model, strong_ckpt_path)
             print("Checkpoint loaded successfully!")
 
@@ -276,6 +286,7 @@ def train_and_save_model(
     if already_trained:
         test_results = eval_model_acc(model, test_ds, eval_batch_size)
     else:
+        print("not already trained, training now")
         start = time.time()
         test_results = train_model(
             model,
@@ -295,6 +306,8 @@ def train_and_save_model(
         )
         print("Model training took", time.time() - start, "seconds")
         if save_path:
+            print("trying to save model at: ")
+            print(save_path)
             # Note: If the model is wrapped by DataParallel, we need to unwrap it before saving
             model_to_save = model.module if hasattr(model, "module") else model
             model_to_save.save_pretrained(save_path)
