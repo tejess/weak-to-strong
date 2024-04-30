@@ -155,15 +155,14 @@ def get_config_foldername(config: dict) -> str:
             return str(value)
 
     name_params = []
-    relevant_configs = ['ds_name', 'lr', 'model_size', 'weak_model_size', 'epochs']
+    relevant_configs = ['ds_name', 'lr', 'model_ckpt', \
+                        'weak_model_size', 'epochs', 'batch_size', 'loss']
     for k, v in sorted(config.items()):
         if k in relevant_configs:
             name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
     return "-".join(name_params)
 
     # return "-".join(f"{shorten_key(k)}={shorten_value(v)}" for k, v in sorted(config.items()))
-
-
 
 
 def main(
@@ -174,9 +173,10 @@ def main(
     n_docs: int = 20000,
     n_test_docs: int = 10000,
     model_size: str = "gpt2",
+    model_ckpt: Optional[str] = None,
     lr: Optional[float] = None,
     optim: Optional[str] = None,
-    epochs: int = 4,
+    epochs: int = 3,
     force_retrain: bool = False,
     seed: int = 0,
     minibatch_size_per_device: Optional[float] = None,
@@ -195,6 +195,7 @@ def main(
     # still do final evals (which requires eval_every to be set to a non-zero, non-None value)
     eval_every: int = 1000000,
     sync_command: Optional[str] = None,
+    strong_ckpt_path: Optional[str] = None,
 ):
     # this is per device!
     if minibatch_size_per_device is None:
@@ -217,15 +218,19 @@ def main(
     if optim is None:
         optim = model_config.default_optimizer
 
+    if model_ckpt is None:
+        model_ckpt = model_size
+
     # The commented out terms are the ones that should not change final results
     config = {
         "batch_size": batch_size,
         "max_ctx": max_ctx,
         "ds_name": ds_name,
+        "model_size": model_size,
         "loss": loss,
         "n_docs": n_docs,
         "n_test_docs": n_test_docs,
-        "model_size": model_size,
+        "model_ckpt": model_ckpt,
         "lr": lr,
         "optim": optim,
         "epochs": epochs,
@@ -238,6 +243,7 @@ def main(
         "lr_schedule": lr_schedule,
         "eval_every": eval_every,
         # "sweep_subfolder": sweep_subfolder,
+        "strong_ckpt": strong_ckpt_path,
     }
 
     if weak_model_size is not None:
@@ -257,10 +263,13 @@ def main(
     random.seed(seed)
 
     # Load dataset
-    dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, test=n_test_docs))
-
-    # Split the training dataset in half
-    train_dataset, test_ds = dataset["train"], dataset["test"]
+    if ds_name == "winograd":
+        dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, validation=n_test_docs))
+        train_dataset, test_ds = dataset["train"], dataset["validation"]
+    else:
+        dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, test=n_test_docs))
+        # Split the training dataset in half
+        train_dataset, test_ds = dataset["train"], dataset["test"]
 
     if weak_labels_path is None:
         split_data = train_dataset.train_test_split(test_size=0.5, seed=seed)
@@ -280,9 +289,11 @@ def main(
             if result.returncode != 0:
                 raise RuntimeError(f"Sync command failed with return code {result.returncode}")
         train1_ds = load_from_disk(weak_labels_path)
-        train2_ds = None
+        # train2_ds = None
+        train2_ds = test_ds
 
         weak_model_config = json.load(open(weak_labels_path.replace("weak_labels", "config.json")))
+        print("weak_model_size:", weak_model_config["model_size"])
         config["weak_model_size"] = weak_model_config["model_size"]
         config_name = get_config_foldername(config)
         config["weak_model"] = weak_model_config
@@ -296,6 +307,7 @@ def main(
     )
     # Tokenize datasets
     tokenizer = get_tokenizer(model_config.name)
+    print("Max context: {}".format(max_ctx))
     train1_ds = tokenize_dataset(train1_ds, tokenizer, max_ctx)
     test_ds = tokenize_dataset(test_ds, tokenizer, max_ctx)
     if train2_ds:
@@ -321,6 +333,7 @@ def main(
         lr_schedule=lr_schedule,
         optimizer_name=optim,
         eval_every=eval_every,
+        strong_ckpt_path=strong_ckpt_path,
     )
 
     if weak_ds is not None:

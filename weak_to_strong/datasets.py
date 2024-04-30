@@ -92,6 +92,16 @@ register_dataset(
     DatasetConfig(loader=hf_loader("dangnguyen0420/equivalence_relation"), formatter=format_equivalence_relation),
 )
 
+def format_winograd(ex, rng):
+    return dict(txt=f""""Fill in the blank for the following sentece: {ex['sentence']}\n
+                        Option 0. {ex['option1']}  Option 1. {ex['option2']}.
+                        Output only 0 or 1.""", hard_label=str(int(ex['answer'])-1))
+
+register_dataset(
+    "winograd",
+    DatasetConfig(loader=hf_loader('winogrande', 'winogrande_debiased'), formatter=format_winograd),
+)
+
 
 def format_hierarchical_equivalence(ex, rng):
     return dict(txt=f"{ex['input']}", hard_label=ex['label'])
