@@ -1,9 +1,6 @@
-You are asked to check for equivalence between two tuples of numbers. Let ~ be the equivalence relation defined as a ~ b if and only if a = b + 3. When a is not equivalent to b, we say a !~ b. For two tuples (a,b) and (c,d), they are equivalent, i.e., (a,b) ~ (c,d) if and only if:
+You are asked to check for equivalence between two tuples of numbers. Let ~ be the equivalence relation defined as a ~ b if and only if a = b + {K}. When a is not equivalent to b, we say a !~ b. For two tuples (a,b) and (c,d), they are equivalent, i.e., (a,b) ~ (c,d) if and only if (a ~ c) AND (b ~ d).
 
-1. (a ~ c) AND (b ~ d)
-2. (a !~ c) AND (b !~ d)
-
-Given an input of the form (a,b) (c,d), say 'Yes' if (a,b) ~ (c,d), and 'No' if (a,b) !~ (c,d).
+Given an input of the form (a,b) (c,d), say 'True' if (a,b) ~ (c,d), and 'False' if (a,b) !~ (c,d).
 
 Input:
 {INPUT}
