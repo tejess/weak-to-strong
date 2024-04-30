@@ -1,4 +1,4 @@
-You are asked to solve the equivalence relation task. Given two numbers, a and b, say "Yes" if a = b + 3 and "No" a does not equal b + 3.
+You are asked to solve the equivalence relation task. Given two numbers, a and b, say "True" if a = b + 3 and "False" a does not equal b + 3.
 
 Input:
 {INPUT}

@@ -130,7 +130,7 @@ MODELS_DICT: Dict[str, ModelConfig] = {
 
 
 loss_dict = {
-    "logconf": logconf_loss_fn(aux_coef=0.1),
+    "logconf": logconf_loss_fn,
     "product": product_loss_fn(),
     "xent": xent_loss(),
 }
@@ -156,7 +156,7 @@ def get_config_foldername(config: dict) -> str:
 
     name_params = []
     relevant_configs = ['ds_name', 'lr', 'model_ckpt', \
-                        'weak_model_size', 'epochs', 'batch_size', 'loss']
+                        'weak_model_ckpt', 'epochs', 'batch_size', 'loss']
     for k, v in sorted(config.items()):
         if k in relevant_configs:
             name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
@@ -170,6 +170,7 @@ def main(
     max_ctx: int = 1024,
     ds_name: str = "sciq",
     loss: str = "xent",
+    aux_coeff: Optional[float] = 0.0,
     n_docs: int = 20000,
     n_test_docs: int = 10000,
     model_size: str = "gpt2",
@@ -189,6 +190,7 @@ def main(
     # model. If you pass weak_labels_path, we will use that path instead.
     # If you pass neither, we will train on ground truth.
     weak_model_size: Optional[str] = None,
+    weak_model_ckpt: Optional[str] = None,
     weak_labels_path: Optional[str] = None,
     sweep_subfolder: str = "default",
     # Set to a very large value so that by default we don't do any intermediate evals but
@@ -227,7 +229,7 @@ def main(
         "max_ctx": max_ctx,
         "ds_name": ds_name,
         "model_size": model_size,
-        "loss": loss,
+        "aux_coeff": aux_coeff,
         "n_docs": n_docs,
         "n_test_docs": n_test_docs,
         "model_ckpt": model_ckpt,
@@ -246,18 +248,18 @@ def main(
         "strong_ckpt": strong_ckpt_path,
     }
 
-    if weak_model_size is not None:
-        weak_model_config = config.copy()
-        weak_model_config["model_size"] = weak_model_size
-        weak_model_config["loss"] = "xent"
-        if use_default_lr:
-            weak_model_config["lr"] = MODELS_DICT[weak_model_size].default_lr
+    # if weak_model_size is not None:
+    #     weak_model_config = config.copy()
+    #     weak_model_config["model_size"] = weak_model_size
+    #     weak_model_config["loss"] = "xent"
+    #     if use_default_lr:
+    #         weak_model_config["lr"] = MODELS_DICT[weak_model_size].default_lr
 
-        weak_model_config_name = get_config_foldername(weak_model_config)
+    #     weak_model_config_name = get_config_foldername(weak_model_config)
 
-        weak_labels_path = (
-            results_folder + "/" + sweep_subfolder + "/" + weak_model_config_name + "/weak_labels"
-        )
+    #     weak_labels_path = (
+    #         results_folder + "/" + sweep_subfolder + "/" + weak_model_config_name + "/weak_labels"
+    #     )
 
     eval_batch_size = model_config.eval_batch_size
     random.seed(seed)
@@ -279,6 +281,7 @@ def main(
     else:
         if not weak_labels_path.endswith("weak_labels"):
             weak_labels_path = weak_labels_path + "/weak_labels"
+
         if sync_command is not None:
             sync_command_list = sync_command.split(" ")
             sync_command_list.extend(
@@ -288,13 +291,19 @@ def main(
             result = subprocess.run(sync_command_list, check=True)
             if result.returncode != 0:
                 raise RuntimeError(f"Sync command failed with return code {result.returncode}")
+                
         train1_ds = load_from_disk(weak_labels_path)
         # train2_ds = None
         train2_ds = test_ds
 
         weak_model_config = json.load(open(weak_labels_path.replace("weak_labels", "config.json")))
-        print("weak_model_size:", weak_model_config["model_size"])
-        config["weak_model_size"] = weak_model_config["model_size"]
+
+        # config["weak_model_size"] = weak_model_config["model_size"]
+        if weak_model_ckpt:
+            config["weak_model_ckpt"] = weak_model_ckpt
+        else:
+            config["weak_model_ckpt"] = weak_model_config["model_size"]
+
         config_name = get_config_foldername(config)
         config["weak_model"] = weak_model_config
 
@@ -313,7 +322,10 @@ def main(
     if train2_ds:
         train2_ds = tokenize_dataset(train2_ds, tokenizer, max_ctx)
 
-    loss_fn = loss_dict[loss]
+    if loss == 'logconf':
+        loss_fn = loss_dict[loss](aux_coeff)
+    else:
+        loss_fn = loss_dict[loss]
     print(f"Training model model, size {model_size}")
     test_results, weak_ds = train_and_save_model(
         model_config,

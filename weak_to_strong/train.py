@@ -1,6 +1,7 @@
 import itertools
 import os
 import pickle
+import json
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -78,18 +79,20 @@ def train_model(
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, nsteps)
     else:
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_schedule_fn)
+
     step = 0
     it = itertools.chain.from_iterable(itertools.repeat(ds, epochs))
     losses = []
     accuracies = []
     eval_acc_dict = {}
+    all_strong_preds = []
 
     # If the model is wrapped by DataParallel, it doesn't have a device. In this case,
     # we use GPU 0 as the output device. This sadly means that this device will store
     # a bit more data than other ones, but hopefully should not be too big of a deal.
     io_device = model.device if hasattr(model, "device") else 0
 
-    while step < nsteps:
+    while step < nsteps + 1:
         loss_tot = 0
         if eval_every and (step + 1) % eval_every == 0:
             eval_results = eval_model_acc(model, eval_ds, eval_batch_size)
@@ -102,6 +105,7 @@ def train_model(
             eval_accs = np.mean([r["acc"] for r in eval_results])
             eval_acc_dict[step] = eval_accs
             logger.logkv("eval_accuracy", eval_accs)
+
         all_logits = []
         all_labels = []
         for i in range(batch_size // minibatch_size):
@@ -109,6 +113,7 @@ def train_model(
                 mbatch = [next(it) for _ in range(minibatch_size)]
             except StopIteration:
                 break
+            
             input_ids = (
                 torch.nn.utils.rnn.pad_sequence([torch.tensor(ex["input_ids"]) for ex in mbatch])
                 .transpose(
@@ -118,23 +123,28 @@ def train_model(
                 .to(io_device)
             )
             labels = torch.tensor([ex["soft_label"] for ex in mbatch]).to(io_device)
-
             logits = model(input_ids)
 
             all_logits.extend(logits.to(io_device))
             all_labels.extend(labels)
+
+        if len(all_logits) == 0:
+            break
+
         all_logits = torch.stack(all_logits)
         all_labels = torch.stack(all_labels)
+
         loss = loss_fn(all_logits, all_labels, step_frac=step / nsteps)
         loss_tot += loss.item()
-        loss.backward()
         losses.append(loss_tot)
+        loss.backward()
+
+        strong_preds = torch.argmax(all_logits, dim=1)
+        labels = torch.argmax(all_labels, dim=1)
+        all_strong_preds.extend(strong_preds.tolist())
+
         accuracies.append(
-            torch.mean(
-                (torch.argmax(all_logits, dim=1) == torch.argmax(all_labels, dim=1)).to(
-                    torch.float32
-                )
-            ).item()
+            torch.mean((strong_preds == labels).to(torch.float32)).item()
         )
         logger.logkvs(
             {
@@ -145,24 +155,29 @@ def train_model(
                 "lr": lr_scheduler.get_last_lr()[0],
             }
         )
+
         optimizer.step()
         optimizer.zero_grad()
         lr_scheduler.step()
+
         if log_every and step % log_every == 0:
             print(
                 f"Step: {step}/{nsteps} Recent losses: {np.mean(losses)} {np.mean(accuracies)} {len(losses)}"
             )
             losses = []
             accuracies = []
+
         step += 1
         logger.dumpkvs()
+        
     final_eval_results = None
     if eval_every:
         print("Final evaluation:")
         final_eval_results = eval_model_acc(model, eval_ds, eval_batch_size)
         logger.logkv("eval_accuracy", np.mean([r["acc"] for r in final_eval_results]))
         logger.dumpkvs()
-    return final_eval_results
+
+    return final_eval_results, all_strong_preds
 
 
 def train_and_save_model(
@@ -189,10 +204,9 @@ def train_and_save_model(
 ):
     if eval_batch_size is None:
         eval_batch_size = batch_size
-
+    print(loss_fn)
     if minibatch_size_per_device is None:
         minibatch_size_per_device = 1
-    print(loss_fn)
     gradient_checkpointing = model_config.gradient_checkpointing
     custom_kwargs = model_config.custom_kwargs or {}
 
@@ -278,7 +292,7 @@ def train_and_save_model(
         test_results = eval_model_acc(model, test_ds, eval_batch_size)
     else:
         start = time.time()
-        test_results = train_model(
+        test_results, train_preds = train_model(
             model,
             train_ds,
             batch_size,
@@ -313,6 +327,10 @@ def train_and_save_model(
             f.write("avg_acc_inference: {}\n".format(float(np.mean([r["acc"] for r in inference_results] if inference_results else []))))
             f.write("test_results: {}\n".format(test_results))
             f.write("inference_results: {}\n".format(inference_results if inference_results else []))
+
+        with open(os.path.join(save_path, "strong_preds.json"), 'w') as f:
+            json.dump(train_preds, f)
+
     # try to clean up memory
     clear_mem()
     logger.shutdown()
