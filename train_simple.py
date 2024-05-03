@@ -130,7 +130,7 @@ MODELS_DICT: Dict[str, ModelConfig] = {
 
 
 loss_dict = {
-    "logconf": logconf_loss_fn(),
+    "logconf": logconf_loss_fn,
     "product": product_loss_fn(),
     "xent": xent_loss(),
 }
@@ -170,6 +170,7 @@ def main(
     max_ctx: int = 1024,
     ds_name: str = "sciq",
     loss: str = "xent",
+    aux_coeff: Optional[float] = 0.0,
     n_docs: int = 20000,
     n_test_docs: int = 10000,
     model_size: str = "gpt2",
@@ -227,7 +228,8 @@ def main(
         "batch_size": batch_size,
         "max_ctx": max_ctx,
         "ds_name": ds_name,
-        "loss": loss,
+        "model_size": model_size,
+        "aux_coeff": aux_coeff,
         "n_docs": n_docs,
         "n_test_docs": n_test_docs,
         "model_ckpt": model_ckpt,
@@ -263,10 +265,13 @@ def main(
     random.seed(seed)
 
     # Load dataset
-    dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, test=n_test_docs))
-
-    # Split the training dataset in half
-    train_dataset, test_ds = dataset["train"], dataset["test"]
+    if ds_name == "winograd":
+        dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, validation=n_test_docs))
+        train_dataset, test_ds = dataset["train"], dataset["validation"]
+    else:
+        dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, test=n_test_docs))
+        # Split the training dataset in half
+        train_dataset, test_ds = dataset["train"], dataset["test"]
 
     if weak_labels_path is None:
         split_data = train_dataset.train_test_split(test_size=0.5, seed=seed)
@@ -317,7 +322,10 @@ def main(
     if train2_ds:
         train2_ds = tokenize_dataset(train2_ds, tokenizer, max_ctx)
 
-    loss_fn = loss_dict[loss]
+    if loss == 'logconf':
+        loss_fn = loss_dict[loss](aux_coeff)
+    else:
+        loss_fn = loss_dict[loss]
     print(f"Training model model, size {model_size}")
     test_results, weak_ds = train_and_save_model(
         model_config,
