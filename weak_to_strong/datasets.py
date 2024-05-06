@@ -101,6 +101,11 @@ register_dataset(
     DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence"), formatter=format_hierarchical_equivalence),
 )
 
+register_dataset(
+    "hierarchical_equivalencek5",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence_k-5"), formatter=format_hierarchical_equivalence),
+)
+
 def format_amazon_polarity(ex, rng):
     return dict(txt=f"{ex['title']} {ex['content']}", hard_label=ex["label"])
 
