@@ -155,8 +155,8 @@ def get_config_foldername(config: dict) -> str:
             return str(value)
 
     name_params = []
-    relevant_configs = ['ds_name', 'lr', 'model_ckpt', \
-                        'weak_model_ckpt', 'epochs', 'batch_size', 'loss']
+    relevant_configs = ['ds_name', 'lr', 'model_ckpt', 'weak_model_ckpt', \
+                        'epochs', 'batch_size', 'loss', 'aux_coeff']
     for k, v in sorted(config.items()):
         if k in relevant_configs:
             name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
@@ -198,6 +198,7 @@ def main(
     eval_every: int = 1000000,
     sync_command: Optional[str] = None,
     strong_ckpt_path: Optional[str] = None,
+    just_evaluate: bool = False,
 ):
     # this is per device!
     if minibatch_size_per_device is None:
@@ -346,6 +347,7 @@ def main(
         optimizer_name=optim,
         eval_every=eval_every,
         strong_ckpt_path=strong_ckpt_path,
+        just_evaluate=just_evaluate,
     )
 
     if weak_ds is not None:

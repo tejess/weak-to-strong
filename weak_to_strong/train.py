@@ -201,6 +201,7 @@ def train_and_save_model(
     optimizer_name: str = "adam",
     eval_every: Optional[int] = None,
     strong_ckpt_path: Optional[str] = None,
+    just_evaluate = False,
 ):
     if eval_batch_size is None:
         eval_batch_size = batch_size
@@ -241,7 +242,8 @@ def train_and_save_model(
             return True
         return False
 
-    already_trained = False
+    # already_trained = False
+
     # Load the model
     if model_config.model_parallel:
         assert torch.cuda.device_count() > 1, f"you might want more gpus for {model_config.name}"
@@ -256,7 +258,7 @@ def train_and_save_model(
             load_model(model, strong_ckpt_path)
             print("Checkpoint loaded successfully!")
 
-        already_trained = maybe_load_model(model)
+        # already_trained = maybe_load_model(model)
         # slight misnomer, more like minibatch_size_per_dp_replica
         minibatch_size = minibatch_size_per_device
     else:
@@ -270,7 +272,7 @@ def train_and_save_model(
             load_model(model, strong_ckpt_path)
             print("Checkpoint loaded successfully!")
 
-        already_trained = maybe_load_model(model)
+        # already_trained = maybe_load_model(model)
         # data parallel:  currently not supported with model parallel
 
         minibatch_size = min(minibatch_size_per_device * torch.cuda.device_count(), batch_size)
@@ -286,9 +288,11 @@ def train_and_save_model(
         else:
             minibatch_size = minibatch_size_per_device
 
-    print("Already trained: {}".format(already_trained))
+    # print("Already trained: {}".format(already_trained))
 
-    if already_trained:
+    # if already_trained:
+    train_preds = None
+    if just_evaluate:
         test_results = eval_model_acc(model, test_ds, eval_batch_size)
     else:
         start = time.time()
@@ -329,7 +333,7 @@ def train_and_save_model(
             f.write("inference_results: {}\n".format(inference_results if inference_results else []))
 
         with open(os.path.join(save_path, "strong_preds.json"), 'w') as f:
-            json.dump(train_preds, f)
+            json.dump(train_preds if train_preds else [], f)
 
     # try to clean up memory
     clear_mem()
