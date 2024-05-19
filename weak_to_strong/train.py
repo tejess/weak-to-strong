@@ -90,8 +90,7 @@ def train_model(
     # If the model is wrapped by DataParallel, it doesn't have a device. In this case,
     # we use GPU 0 as the output device. This sadly means that this device will store
     # a bit more data than other ones, but hopefully should not be too big of a deal.
-    io_device = model.device if hasattr(model, "device") else 0
-
+    io_device = model.device if hasattr(model, "device") else 3
     while step < nsteps + 1:
         loss_tot = 0
         if eval_every and (step + 1) % eval_every == 0:
@@ -201,6 +200,9 @@ def train_and_save_model(
     optimizer_name: str = "adam",
     eval_every: Optional[int] = None,
     strong_ckpt_path: Optional[str] = None,
+    just_evaluate = False,
+    random_init = 0.0,
+    num_trials = 1,
 ):
     if eval_batch_size is None:
         eval_batch_size = batch_size
@@ -241,95 +243,169 @@ def train_and_save_model(
             return True
         return False
 
-    already_trained = False
+    # already_trained = False
+    '''
+    model = TransformerWithHead.from_pretrained(
+        'gpt2-large', 
+        num_labels=2, 
+        linear_probe=False
+    )
+    
+'''
+    inference_accuracy = []
+    test_accuracy = []
+    print(num_trials)
+    torch.manual_seed(50)
+    for _ in range(num_trials):
     # Load the model
-    if model_config.model_parallel:
-        assert torch.cuda.device_count() > 1, f"you might want more gpus for {model_config.name}"
-        model = TransformerWithHead.from_pretrained(
-            model_config.name,
-            num_labels=2,
-            device_map="auto",
-            linear_probe=linear_probe,
-            **custom_kwargs,
-        )
-        if strong_ckpt_path:
-            load_model(model, strong_ckpt_path)
-            print("Checkpoint loaded successfully!")
-
-        already_trained = maybe_load_model(model)
-        # slight misnomer, more like minibatch_size_per_dp_replica
-        minibatch_size = minibatch_size_per_device
-    else:
-        model = TransformerWithHead.from_pretrained(
-            model_config.name, 
-            num_labels=2, 
-            linear_probe=linear_probe, 
-            **custom_kwargs
-        ).to("cuda")
-        if strong_ckpt_path:
-            load_model(model, strong_ckpt_path)
-            print("Checkpoint loaded successfully!")
-
-        already_trained = maybe_load_model(model)
-        # data parallel:  currently not supported with model parallel
-
-        minibatch_size = min(minibatch_size_per_device * torch.cuda.device_count(), batch_size)
-
-        if torch.cuda.device_count() > 1:
-            model = torch.nn.DataParallel(model, output_device=0)
-            print(
-                "Using",
-                torch.cuda.device_count(),
-                "GPUs, setting minibatch_size to",
-                minibatch_size,
+        if model_config.model_parallel:
+            assert torch.cuda.device_count() > 1, f"you might want more gpus for {model_config.name}"
+            model = TransformerWithHead.from_pretrained(
+                model_config.name,
+                num_labels=2,
+                device_map="auto",
+                linear_probe=linear_probe,
+                **custom_kwargs,
             )
-        else:
+
+            if random_init > 0.0:
+                print("Initiliazing model with random weights")
+                model_state = model.state_dict()
+                for name, weights in model_state.items():
+                    w_shape = weights.shape
+                    total_elem = torch.numel(weights)
+                    mask = torch.ones(total_elem, dtype=torch.bool)
+                    num_masked_elements = round(total_elem * random_init)
+                    masked_indices = torch.randperm(total_elem)[:num_masked_elements]
+                    mask[masked_indices] = 0
+                    mask = torch.reshape(mask, w_shape).to(weights.device)
+                    if len(w_shape) == 2:
+                        rand = torch.nn.init.kaiming_uniform_(torch.empty_like(weights), nonlinearity='relu').to(weights.device)
+                    else:
+                        rand = torch.randn(w_shape).to(weights.device)
+                    rand_weights = torch.where(mask, weights, rand).to(weights.device)
+                    model_state[name] = rand_weights
+
+                    model.load_state_dict(model_state)
+            if strong_ckpt_path:
+                load_model(model, strong_ckpt_path)
+                print("Checkpoint loaded successfully!")
+
+            # already_trained = maybe_load_model(model)
+            # slight misnomer, more like minibatch_size_per_dp_replica
             minibatch_size = minibatch_size_per_device
+        else:
+            print("Not Using model parallel")
+            model = TransformerWithHead.from_pretrained(
+                model_config.name, 
+                num_labels=2, 
+                linear_probe=linear_probe, 
+                **custom_kwargs
+            ).to("cuda")
+            if random_init > 0.0:
+                print("Initiliazing model with random weights")
+                model_state = model.state_dict()
+                for name, weights in model_state.items():
+                    w_shape = weights.shape
+                    total_elem = torch.numel(weights)
+                    mask = torch.ones(total_elem, dtype=torch.bool)
+                    num_masked_elements = round(total_elem * random_init)
+                    masked_indices = torch.randperm(total_elem)[:num_masked_elements]
+                    mask[masked_indices] = 0
+                    mask = torch.reshape(mask, w_shape).to(weights.device)
+                    if len(w_shape) == 2:
+                        rand = torch.nn.init.kaiming_uniform_(torch.empty_like(weights), nonlinearity='relu').to(weights.device)
+                    else:
+                        rand = torch.randn(w_shape).to(weights.device)
+                    rand_weights = torch.where(mask, weights, rand).to(weights.device)
+                    model_state[name] = rand_weights
 
-    print("Already trained: {}".format(already_trained))
+                    model.load_state_dict(model_state)
+            if strong_ckpt_path:
+                load_model(model, strong_ckpt_path)
+                print("Checkpoint loaded successfully!")
 
-    if already_trained:
-        test_results = eval_model_acc(model, test_ds, eval_batch_size)
-    else:
-        start = time.time()
-        test_results, train_preds = train_model(
-            model,
-            train_ds,
-            batch_size,
-            lr=lr,
-            epochs=epochs,
-            eval_ds=test_ds,
-            gradient_checkpointing=gradient_checkpointing,
-            loss_fn=loss_fn,
-            eval_batch_size=eval_batch_size,
-            eval_every=eval_every,
-            minibatch_size=minibatch_size,
-            train_with_dropout=train_with_dropout,
-            lr_schedule=lr_schedule,
-            optimizer_name=optimizer_name,
-        )
-        print("Model training took", time.time() - start, "seconds")
-        if save_path:
-            # Note: If the model is wrapped by DataParallel, we need to unwrap it before saving
-            (model if hasattr(model, "save_pretrained") else model.module).save_pretrained(
-                save_path
+            # already_trained = maybe_load_model(model)
+            # data parallel:  currently not supported with model parallel
+
+            minibatch_size = min(minibatch_size_per_device * torch.cuda.device_count(), batch_size)
+
+            if torch.cuda.device_count() > 1:
+                model = torch.nn.DataParallel(model, output_device=0)
+                print(
+                    "Using",
+                    torch.cuda.device_count(),
+                    "GPUs, setting minibatch_size to",
+                    minibatch_size,
+                )
+            else:
+                minibatch_size = minibatch_size_per_device
+
+        # print("Already trained: {}".format(already_trained))
+
+        # if already_trained:
+        train_preds = None
+        if just_evaluate:
+            test_results = eval_model_acc(model, test_ds, eval_batch_size)
+            inference_results = None
+            if inference_ds:
+                inference_results = eval_model_acc(model, inference_ds, eval_batch_size)
+                logger.logkv("inference_accuracy", np.mean([r["acc"] for r in inference_results]))
+
+            if save_path:
+                with open(os.path.join(save_path, "results.txt"), "w") as f:
+                    f.write("avg_acc_test: {}\n".format(float(np.mean([r["acc"] for r in test_results]))))
+                    f.write("avg_acc_inference: {}\n".format(float(np.mean([r["acc"] for r in inference_results] if inference_results else []))))
+                    f.write("test_results: {}\n".format(test_results))
+                    f.write("inference_results: {}\n".format(inference_results if inference_results else []))
+
+                with open(os.path.join(save_path, "strong_preds.json"), 'w') as f:
+                    json.dump(train_preds if train_preds else [], f)
+        else:
+            print("Starting training")
+            start = time.time()
+            test_results, train_preds = train_model(
+                model,
+                train_ds,
+                batch_size,
+                lr=lr,
+                epochs=epochs,
+                eval_ds=test_ds,
+                gradient_checkpointing=gradient_checkpointing,
+                loss_fn=loss_fn,
+                eval_batch_size=eval_batch_size,
+                eval_every=eval_every,
+                minibatch_size=minibatch_size,
+                train_with_dropout=train_with_dropout,
+                lr_schedule=lr_schedule,
+                optimizer_name=optimizer_name,
             )
-            print("saved", save_path)
+            print("Model training took", time.time() - start, "seconds")
+            if save_path:
+                # Note: If the model is wrapped by DataParallel, we need to unwrap it before saving
+                (model if hasattr(model, "save_pretrained") else model.module).save_pretrained(
+                    save_path
+                )
+                print("saved", save_path)
 
-    inference_results = None
-    if inference_ds:
-        inference_results = eval_model_acc(model, inference_ds, eval_batch_size)
-        logger.logkv("inference_accuracy", np.mean([r["acc"] for r in inference_results]))
+            inference_results = None
+            if inference_ds:
+                inference_results = eval_model_acc(model, inference_ds, eval_batch_size)
+                logger.logkv("inference_accuracy", np.mean([r["acc"] for r in inference_results]))
+                inference_accuracy.append(np.mean([r["acc"] for r in inference_results]))
+            test_accuracy.append(np.mean([r["acc"] for r in test_results]))
+            if save_path:
+                with open(os.path.join(save_path, "results.txt"), "w") as f:
+                    f.write("avg_acc_test: {}\n".format(float(np.mean([r["acc"] for r in test_results]))))
+                    f.write("avg_acc_inference: {}\n".format(float(np.mean([r["acc"] for r in inference_results] if inference_results else []))))
+                    f.write("test_results: {}\n".format(test_results))
+                    f.write("inference_results: {}\n".format(inference_results if inference_results else []))
 
-    if save_path:
-        with open(os.path.join(save_path, "results.txt"), "w") as f:
-            f.write("avg_acc_test: {}\n".format(float(np.mean([r["acc"] for r in test_results]))))
-            f.write("avg_acc_inference: {}\n".format(float(np.mean([r["acc"] for r in inference_results] if inference_results else []))))
-            f.write("test_results: {}\n".format(test_results))
-            f.write("inference_results: {}\n".format(inference_results if inference_results else []))
-
-        with open(os.path.join(save_path, "strong_preds.json"), 'w') as f:
-            json.dump(train_preds, f)
+                with open(os.path.join(save_path, "strong_preds.json"), 'w') as f:
+                    json.dump(train_preds if train_preds else [], f)
+    with open(os.path.join(save_path, "results_average.txt"), "w") as f:
+        f.write("avg_acc_test: {}\n".format(float(np.mean(test_accuracy))))
+        f.write("avg_acc_inference: {}\n".format(float(np.mean(inference_accuracy) if inference_accuracy else [])))
 
     # try to clean up memory
     clear_mem()
