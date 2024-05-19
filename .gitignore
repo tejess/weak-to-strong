@@ -7,3 +7,4 @@ results
 .gitignore
 slurm-*
 *.sh
+WTS/

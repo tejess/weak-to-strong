@@ -24,6 +24,11 @@ MODEL_CONFIGS = [
         eval_batch_size=32,
     ),
     ModelConfig(
+        name="suhaaspk/math-corpus-model",
+        default_lr=1e-5,
+        eval_batch_size=32,
+    ),
+    ModelConfig(
         name="gpt2-medium",
         default_lr=1e-5,
         eval_batch_size=32,
@@ -156,9 +161,11 @@ def get_config_foldername(config: dict) -> str:
             return str(value)
 
     name_params = []
-    relevant_configs = ['ds_name', 'lr', 'model_ckpt', \
-                        'weak_model_ckpt', 'epochs', 'batch_size', 'loss']
+    relevant_configs = ['ds_name', 'lr', 'model_ckpt', 'weak_model_ckpt', \
+                        'epochs', 'batch_size', 'loss']
     for k, v in sorted(config.items()):
+        # if k == 'loss' and config[k] == 'logconf':
+        #     relevant_configs.append('aux_coeff')
         if k in relevant_configs:
             name_params.append(f"{shorten_key(k)}={shorten_value(v)}")
     return "-".join(name_params)
@@ -178,7 +185,7 @@ def main(
     model_ckpt: Optional[str] = None,
     lr: Optional[float] = None,
     optim: Optional[str] = None,
-    epochs: int = 3,
+    epochs: float = 3,
     force_retrain: bool = False,
     seed: int = 0,
     minibatch_size_per_device: Optional[float] = None,
@@ -228,12 +235,19 @@ def main(
     if model_ckpt is None:
         model_ckpt = model_size
 
+    if loss == 'logconf':
+        loss_fn = loss_dict[loss](aux_coeff)
+        loss = loss + '-' + str(aux_coeff)
+    else:
+        loss_fn = loss_dict[loss]
+
     # The commented out terms are the ones that should not change final results
     config = {
         "batch_size": batch_size,
         "max_ctx": max_ctx,
         "ds_name": ds_name,
         "model_size": model_size,
+        "loss": loss,
         "aux_coeff": aux_coeff,
         "n_docs": n_docs,
         "n_test_docs": n_test_docs,
@@ -269,6 +283,8 @@ def main(
     eval_batch_size = model_config.eval_batch_size
     random.seed(seed)
 
+    print("n_docs is: ")
+    print(n_docs)
     # Load dataset
     if ds_name == "winograd":
         dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, validation=n_test_docs))
@@ -326,15 +342,16 @@ def main(
     # Tokenize datasets
     tokenizer = get_tokenizer(model_config.name)
     print("Max context: {}".format(max_ctx))
+
     train1_ds = tokenize_dataset(train1_ds, tokenizer, max_ctx)
     test_ds = tokenize_dataset(test_ds, tokenizer, max_ctx)
-    if train2_ds:
-        train2_ds = tokenize_dataset(train2_ds, tokenizer, max_ctx)
 
-    if loss == 'logconf':
-        loss_fn = loss_dict[loss](aux_coeff)
+    if not just_evaluate and train2_ds:
+        train2_ds = tokenize_dataset(train2_ds, tokenizer, max_ctx)
     else:
-        loss_fn = loss_dict[loss]
+        train2_ds = test_ds
+
+    
     print(f"Training model model, size {model_size}")
     test_results, weak_ds = train_and_save_model(
         model_config,

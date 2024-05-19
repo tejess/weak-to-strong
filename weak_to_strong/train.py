@@ -5,6 +5,7 @@ import json
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional
+import math
 
 import datasets
 import numpy as np
@@ -61,7 +62,7 @@ def train_model(
             model if hasattr(model, "gradient_checkpointing_enable") else model.module
         ).gradient_checkpointing_enable()
 
-    nsteps = len(ds) * epochs // batch_size
+    nsteps = int(len(ds) * epochs // batch_size)
 
     def lr_schedule_fn(step):
         if lr_schedule == "constant":
@@ -81,7 +82,7 @@ def train_model(
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_schedule_fn)
 
     step = 0
-    it = itertools.chain.from_iterable(itertools.repeat(ds, epochs))
+    it = itertools.chain.from_iterable(itertools.repeat(ds, math.ceil(epochs)))
     losses = []
     accuracies = []
     eval_acc_dict = {}
@@ -203,6 +204,7 @@ def train_and_save_model(
     just_evaluate = False,
     random_init = 0.0,
     num_trials = 1,
+
 ):
     if eval_batch_size is None:
         eval_batch_size = batch_size

@@ -121,7 +121,68 @@ def format_hierarchical_equivalence(ex, rng):
 
 register_dataset(
     "hierarchical_equivalence",
-    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence"), formatter=format_hierarchical_equivalence),
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "hierarchical_equivalencek5",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence_k-5"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "hierarchical_equivalence_k=3_test2",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence_k-3_test2"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "hierarchical_equiv_prod_k=3",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equiv_prod_k-3"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarch_equiv_add_k=3",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_add_k-3"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarch_equiv_minus_k=3",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_minus_k-3"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarch_equiv_add_k=1-9",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_k-1-9"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarch_equiv_add_k=1-99",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_k-1-99"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarch_equiv_add_k=5",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_k-5"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarch_equiv_add_k=7",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_k-7"), 
+    formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarch_equiv_add_k=6",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_k-6"), 
+    formatter=format_hierarchical_equivalence),
 )
 
 register_dataset(
