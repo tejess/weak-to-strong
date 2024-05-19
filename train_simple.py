@@ -24,6 +24,11 @@ MODEL_CONFIGS = [
         eval_batch_size=32,
     ),
     ModelConfig(
+        name="suhaaspk/math-corpus-model",
+        default_lr=1e-5,
+        eval_batch_size=32,
+    ),
+    ModelConfig(
         name="gpt2-medium",
         default_lr=1e-5,
         eval_batch_size=32,
@@ -274,6 +279,8 @@ def main(
     eval_batch_size = model_config.eval_batch_size
     random.seed(seed)
 
+    print("n_docs is: ")
+    print(n_docs)
     # Load dataset
     if ds_name == "winograd":
         dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, validation=n_test_docs))
@@ -327,6 +334,7 @@ def main(
     # Tokenize datasets
     tokenizer = get_tokenizer(model_config.name)
     print("Max context: {}".format(max_ctx))
+
     train1_ds = tokenize_dataset(train1_ds, tokenizer, max_ctx)
     test_ds = tokenize_dataset(test_ds, tokenizer, max_ctx)
 
