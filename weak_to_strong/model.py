@@ -22,6 +22,8 @@ class TransformerWithHead(PreTrainedModel):
         self.lm = lm
         if name[:4] == "gpt2":
             self.transformer = lm.transformer
+        elif name[:4] == "suha":
+            self.transformer = lm.transformer
         else:
             self.transformer = lm.model
         hidden_size = getattr(config, "n_embd", getattr(config, "hidden_size", None))
