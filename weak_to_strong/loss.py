@@ -79,7 +79,7 @@ class logconf_loss_fn(LossFnBase):
 
     def __init__(
         self,
-        aux_coef: float = 0.5,
+        aux_coef: float = 0.95,
         warmup_frac: float = 0.1,  # in terms of fraction of total training steps
     ):
         self.aux_coef = aux_coef
