@@ -5,6 +5,7 @@ from typing import Any, Callable, Optional
 
 from datasets import Dataset as HfDataset
 from datasets import load_dataset as hf_load_dataset
+import re
 
 
 @dataclass
@@ -92,6 +93,7 @@ register_dataset(
     DatasetConfig(loader=hf_loader("dangnguyen0420/equivalence_relation"), formatter=format_equivalence_relation),
 )
 
+
 def format_winograd(ex, rng):
     return dict(txt=f""""Fill in the blank for the following sentece: {ex['sentence']}\n
                         Option 0. {ex['option1']}  Option 1. {ex['option2']}.
@@ -102,6 +104,17 @@ register_dataset(
     DatasetConfig(loader=hf_loader('winogrande', 'winogrande_debiased'), formatter=format_winograd),
 )
 
+def more_format_hierarchical_relation(str):
+    pattern = r"Input:(.*?)Output:"
+    match = re.search(pattern, str, re.DOTALL)
+    if match:
+        content = match.group(1).strip()
+        return dict(txt=content, hard_label=None)
+    else:
+        return None
+
+def simple_format_hierarchical_equivalence(ex, rng):
+    return dict(txt=f"{more_format_hierarchical_relation(ex['input'])}", hard_label=ex['label'])
 
 def format_hierarchical_equivalence(ex, rng):
     return dict(txt=f"{ex['input']}", hard_label=ex['label'])
@@ -170,6 +183,51 @@ register_dataset(
     "simple_hierarch_equiv_add_k=6",
     DatasetConfig(loader=hf_loader("dangnguyen0420/simple_hierarch_equiv_k-6"), 
     formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarchical_equivalence",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence"), formatter=simple_format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "hierarchical_equivalence_k-3_test2",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence_k-3_test2"), formatter=format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "simple_hierarchical_equivalence_k-3_test2",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence_k-3_test2"), formatter=simple_format_hierarchical_equivalence),
+)
+
+register_dataset(
+    "hierarchical_equivalencek5",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence_k-5"), formatter=format_hierarchical_equivalence),
+)
+
+
+register_dataset(
+    "simple_hierarchical_equivalencek5",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equivalence_k-5"), formatter=simple_format_hierarchical_equivalence),
+)
+
+def format_compositional(ex, rng):
+    label = 1 if ex['label'] else 0
+    return dict(txt=f"{ex['input']}", hard_label=label)
+
+register_dataset(
+    "compositional_hierarchical_equivalance",
+    DatasetConfig(loader=hf_loader("Tejes/compositional_hierarchical_equivalance"), formatter=format_compositional),
+)
+
+register_dataset(
+    "hierarchical_equivalence_prod_5",
+    DatasetConfig(loader=hf_loader("Tejes/hierarchical_equiv_prod_5"), formatter=format_compositional),
+)
+
+register_dataset(
+    "hierarchical_equivalence_prod_3",
+    DatasetConfig(loader=hf_loader("dangnguyen0420/hierarchical_equiv_prod_k-3"), formatter=simple_format_hierarchical_equivalence)
 )
 
 def format_amazon_polarity(ex, rng):
@@ -256,6 +314,7 @@ disable_caching()
 
 from weak_to_strong.datasets import load_dataset, VALID_DATASETS
 import numpy as np
+
 
 ds_name = "boolq"
 print(VALID_DATASETS)

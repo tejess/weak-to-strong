@@ -37,6 +37,7 @@ MODEL_CONFIGS = [
         name="gpt2-large",
         default_lr=1e-5,
         eval_batch_size=32,
+        model_parallel=True,
     ),
     ModelConfig(
         name="gpt2-xl",
@@ -206,6 +207,9 @@ def main(
     sync_command: Optional[str] = None,
     strong_ckpt_path: Optional[str] = None,
     just_evaluate: bool = False,
+    use_validation: bool = False,
+    random_init: float = 0.0,
+    num_trials: int = 1,
 ):
     # this is per device!
     if minibatch_size_per_device is None:
@@ -286,9 +290,13 @@ def main(
         dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, validation=n_test_docs))
         train_dataset, test_ds = dataset["train"], dataset["validation"]
     else:
-        dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, test=n_test_docs))
+        set = 'validation' if use_validation else 'test'
+        if use_validation:
+            dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, validation=n_test_docs))
+        else:
+            dataset = load_dataset(ds_name, seed=seed, split_sizes=dict(train=n_docs, test=n_test_docs))
         # Split the training dataset in half
-        train_dataset, test_ds = dataset["train"], dataset["test"]
+        train_dataset, test_ds = dataset["train"], dataset[set]
 
     if weak_labels_path is None:
         split_data = train_dataset.train_test_split(test_size=0.5, seed=seed)
@@ -365,6 +373,8 @@ def main(
         eval_every=eval_every,
         strong_ckpt_path=strong_ckpt_path,
         just_evaluate=just_evaluate,
+        random_init=random_init,
+        num_trials=num_trials,
     )
 
     if weak_ds is not None:

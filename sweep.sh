@@ -1,25 +1,22 @@
 #!/bin/sh
 
-# WEAK_MODEL=gpt2
-# STRONG_MODEL=gpt2-large
-# python sweep.py \
-#     --model_sizes=$WEAK_MODEL,$STRONG_MODEL \
-#     --ds_name=winograd \
-#     --epochs=4 \
-#     --sweep_subfolder=winograd \
-#     --loss logconf \
-#     --aux_coeff 0.1 \
-#     --n_docs=200 
-
+for PER in 0.00001
+do
 python train_simple.py \
     --model_size=gpt2-large \
-    --ds_name=winograd \
+    --ds_name=simple_hierarchical_equivalence \
     --batch_size=32 \
     --lr=1e-05 \
     --epochs=3 \
-    --sweep_subfolder=winograd \
-    --loss=logconf \
-    --aux_coeff=0.1 \
-    --model_ckpt=gpt2-large-winograd \
-    --strong_ckpt_path=./results/winograd/bs=32-dn=winograd-e=4-l=1e-05-mc=gpt2-large/model.safetensors \
-    --weak_labels_path=./results/winograd/bs=32-dn=winograd-e=4-l=1e-05-mc=gpt2-large/weak_labels:q
+    --sweep_subfolder=random_init_average \
+    --loss=xent \
+    --model_ckpt=WTS-$PER \
+    --use_validation=False \
+    --random_init=$PER \
+    --num_trials=10 \
+    --weak_labels_path=/data/tejess/weak-to-strong/results/random_init_average/ac=0.0-bs=32-dn=simp_hier_equi-e=3-l=1e-05-mc=gpt2-$PER/weak_labels \
+
+done
+    #--strong_ckpt_path=/data/tejess/weak-to-strong/results/hierarchical_equivalencek5/ac=0.0-bs=32-dn=simp_hier_equi-e=4-l=1e-05-mc=gpt2-large/model.safetensors \
+    #--just_evaluate=True \
+    #--weak_labels_path=/data/tejess/weak-to-strong/results/hierarchical_equivalence/ac=0.0-bs=32-dn=simp_hier_equi-e=2-l=1e-05-mc=gpt2/weak_labels \

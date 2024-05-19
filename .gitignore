@@ -6,4 +6,5 @@ results
 .ipynb_checkpoints/
 .gitignore
 slurm-*
+*.sh
 WTS/
